@@ -11,20 +11,21 @@ OUTPUT_ROOT = "output"
 
 PATCH_SIZE = 256
 
-# 只测试这一张
-TARGET_SLIDE_ID = "normal_003"
+# Only test this one slide first
+TARGET_SLIDE_ID = "normal_002"
 
 ENABLE_RANGE_FILTER = False
 START_SLIDE_NUM = 4
 END_SLIDE_NUM = 60
 
-# 先少跑一点，确认 pyvips、坐标、输出都正常
+# Run fewer patches first to make sure pyvips, coordinates,
+# and output files are all working correctly
 LIMIT_PATCHES_PER_SLIDE = None
 ATTENTION_DECIMALS = 6
 
 
 # =========================
-# 工具函数
+# Utility functions
 # =========================
 
 def safe_int(v):
@@ -76,15 +77,15 @@ def ensure_uint8_rgb(img: pyvips.Image) -> pyvips.Image:
 
 
 # =========================
-# 主逻辑
+# Main logic
 # =========================
 
 def main():
     if not os.path.exists(CSV_PATH):
-        raise FileNotFoundError(f"找不到 CSV 文件: {CSV_PATH}")
+        raise FileNotFoundError(f"CSV file not found: {CSV_PATH}")
 
     if not os.path.exists(TIF_DIR):
-        raise FileNotFoundError(f"找不到 TIFF 目录: {TIF_DIR}")
+        raise FileNotFoundError(f"TIFF directory not found: {TIF_DIR}")
 
     os.makedirs(OUTPUT_ROOT, exist_ok=True)
 
@@ -93,19 +94,19 @@ def main():
     required_cols = ["slide_id", "x", "y", "attention_raw", "rank"]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"CSV 缺少必要列: {missing}")
+        raise ValueError(f"CSV is missing required columns: {missing}")
 
     df["slide_id"] = df["slide_id"].astype(str)
     df["rank"] = df["rank"].apply(safe_int)
 
-    # 只保留 normal_001
+    # Keep only the target slide
     df = df[df["slide_id"] == TARGET_SLIDE_ID].copy()
 
     if ENABLE_RANGE_FILTER:
         df = df[df["slide_id"].apply(lambda s: slide_in_range(s, START_SLIDE_NUM, END_SLIDE_NUM))].copy()
 
     if df.empty:
-        raise ValueError(f"筛选后没有数据，请检查 CSV 中是否有 {TARGET_SLIDE_ID}")
+        raise ValueError(f"No data found after filtering. Please check whether {TARGET_SLIDE_ID} exists in the CSV.")
 
     class_output_dir = os.path.join(OUTPUT_ROOT, MODE)
     os.makedirs(class_output_dir, exist_ok=True)
@@ -113,14 +114,14 @@ def main():
     slide_ids = sorted(df["slide_id"].unique())
 
     print("=" * 80, flush=True)
-    print(f"模式: {MODE}", flush=True)
+    print(f"Mode: {MODE}", flush=True)
     print(f"CSV: {CSV_PATH}", flush=True)
-    print(f"TIF 目录: {TIF_DIR}", flush=True)
-    print(f"输出根目录: {OUTPUT_ROOT}", flush=True)
-    print(f"分类输出目录: {class_output_dir}", flush=True)
-    print(f"patch size: {PATCH_SIZE} x {PATCH_SIZE}", flush=True)
-    print(f"目标 slide: {TARGET_SLIDE_ID}", flush=True)
-    print(f"待处理 slide 数量: {len(slide_ids)}", flush=True)
+    print(f"TIFF directory: {TIF_DIR}", flush=True)
+    print(f"Output root directory: {OUTPUT_ROOT}", flush=True)
+    print(f"Class output directory: {class_output_dir}", flush=True)
+    print(f"Patch size: {PATCH_SIZE} x {PATCH_SIZE}", flush=True)
+    print(f"Target slide: {TARGET_SLIDE_ID}", flush=True)
+    print(f"Number of slides to process: {len(slide_ids)}", flush=True)
     print("=" * 80, flush=True)
 
     total_success = 0
@@ -137,18 +138,18 @@ def main():
         tif_path = get_tif_path(slide_id)
 
         print("\n" + "-" * 80, flush=True)
-        print(f"[Slide {slide_index}/{len(slide_ids)}] 开始处理 {slide_id}", flush=True)
-        print(f"对应 TIFF: {tif_path}", flush=True)
-        print(f"该 slide patch 数量: {len(slide_df)}", flush=True)
+        print(f"[Slide {slide_index}/{len(slide_ids)}] Start processing {slide_id}", flush=True)
+        print(f"Matching TIFF: {tif_path}", flush=True)
+        print(f"Number of patches in this slide: {len(slide_df)}", flush=True)
 
         if not os.path.exists(tif_path):
-            print(f"[警告] 找不到 TIFF，跳过: {tif_path}", flush=True)
+            print(f"[Warning] TIFF not found, skipping: {tif_path}", flush=True)
             total_missing_tif += 1
             continue
 
         slide_output_dir = os.path.join(class_output_dir, slide_id)
         os.makedirs(slide_output_dir, exist_ok=True)
-        print(f"输出文件夹: {slide_output_dir}", flush=True)
+        print(f"Output folder: {slide_output_dir}", flush=True)
 
         slide_success = 0
         slide_skipped = 0
@@ -157,7 +158,7 @@ def main():
 
         width = img.width
         height = img.height
-        print(f"TIFF 尺寸: width={width}, height={height}", flush=True)
+        print(f"TIFF size: width={width}, height={height}", flush=True)
 
         for idx, row in slide_df.iterrows():
             t0 = time.time()
@@ -177,14 +178,14 @@ def main():
 
             print(
                 f"[{slide_id}] [{idx + 1}/{len(slide_df)}] "
-                f"开始处理: {filename} | box=({left}, {top}, {left + patch_w}, {top + patch_h})",
+                f"Processing: {filename} | box=({left}, {top}, {left + patch_w}, {top + patch_h})",
                 flush=True
             )
 
             if left < 0 or top < 0 or left + patch_w > width or top + patch_h > height:
                 print(
                     f"[{slide_id}] [{idx + 1}/{len(slide_df)}] "
-                    f"跳过，超出边界",
+                    f"Skipped, out of bounds",
                     flush=True
                 )
                 slide_skipped += 1
@@ -202,27 +203,27 @@ def main():
 
                 print(
                     f"[{slide_id}] [{idx + 1}/{len(slide_df)}] "
-                    f"完成: {filename} | 用时 {dt:.2f}s",
+                    f"Done: {filename} | Time used: {dt:.2f}s",
                     flush=True
                 )
             except Exception as e:
                 print(
                     f"[{slide_id}] [{idx + 1}/{len(slide_df)}] "
-                    f"失败: {filename} | 错误: {e}",
+                    f"Failed: {filename} | Error: {e}",
                     flush=True
                 )
                 slide_skipped += 1
                 total_skipped += 1
 
-        print(f"[Slide 完成] {slide_id}", flush=True)
-        print(f"成功导出: {slide_success}", flush=True)
-        print(f"跳过数量: {slide_skipped}", flush=True)
+        print(f"[Slide done] {slide_id}", flush=True)
+        print(f"Successfully exported: {slide_success}", flush=True)
+        print(f"Skipped: {slide_skipped}", flush=True)
 
     print("\n" + "=" * 80, flush=True)
-    print("全部处理完成", flush=True)
-    print(f"总成功导出: {total_success}", flush=True)
-    print(f"总跳过数量: {total_skipped}", flush=True)
-    print(f"缺失 TIFF 数量: {total_missing_tif}", flush=True)
+    print("All processing finished", flush=True)
+    print(f"Total successfully exported: {total_success}", flush=True)
+    print(f"Total skipped: {total_skipped}", flush=True)
+    print(f"Missing TIFF count: {total_missing_tif}", flush=True)
     print("=" * 80, flush=True)
 
 
