@@ -59,15 +59,9 @@ A simple comparison can be used to show the benefit of this modification:
 
 | Method | Patch Extraction Speed | Scalability | Practicality for Large Images |
 |--------|------------------------|-------------|-------------------------------|
-| Previous method | Slower | Limited | Less practical |
-| pyvips-based method | Faster | Better | More practical |
+| Previous method | Slower | Limited | only ok with largeram ddr5s |
+| pyvips-based method | 30xFaster | Better | totally ok with ddr4s or worse |
 
-> You can replace this table with real experimental numbers if available.
-
-For example, you may report:
-- time used per slide
-- total time for a batch of slides
-- memory usage or stability observations
 
 ---
 
@@ -83,6 +77,7 @@ This is aligned with the course goal of modifying at least one part of the imple
 ## Tools Used
 
 - Python
+- PIL stands for pillow pack
 - pyvips
 - Other supporting Python libraries for file handling and patch organization
 
