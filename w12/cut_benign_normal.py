@@ -3,12 +3,12 @@ import math
 import pandas as pd
 from PIL import Image, ImageFile
 
-# 允许处理超大图
+# Allow processing of very large images
 Image.MAX_IMAGE_PIXELS = None
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # =========================
-# 可改参数
+# Editable parameters
 # =========================
 CSV_PATH = "benign_top5_all.csv"
 TIF_PATH = "normal_002.tif"
@@ -17,8 +17,8 @@ OUTPUT_DIR = "benign_cut_output"
 TARGET_SLIDE_ID = "normal_002"
 PATCH_SIZE = 256
 
-# True = 只切 TARGET_SLIDE_ID
-# False = csv 里有什么 slide_id 就切什么
+# True = only cut TARGET_SLIDE_ID
+# False = cut whatever slide_id appears in the CSV
 FILTER_BY_SLIDE = True
 
 
@@ -42,10 +42,10 @@ def build_filename(slide_id, rank, x, y, attention_raw):
 
 def main():
     if not os.path.exists(CSV_PATH):
-        raise FileNotFoundError(f"找不到 CSV 文件: {CSV_PATH}")
+        raise FileNotFoundError(f"CSV file not found: {CSV_PATH}")
 
     if not os.path.exists(TIF_PATH):
-        raise FileNotFoundError(f"找不到 TIFF 文件: {TIF_PATH}")
+        raise FileNotFoundError(f"TIFF file not found: {TIF_PATH}")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -56,26 +56,26 @@ def main():
     ]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"CSV 缺少必要列: {missing}")
+        raise ValueError(f"CSV is missing required columns: {missing}")
 
     if FILTER_BY_SLIDE:
         df = df[df["slide_id"].astype(str) == TARGET_SLIDE_ID].copy()
 
     if df.empty:
-        raise ValueError("筛选后没有任何行，请检查 slide_id 或 CSV 内容。")
+        raise ValueError("No rows found after filtering. Please check the slide_id or CSV content.")
 
-    # 排序，保证 top00001, top00002...
+    # Sort to make sure filenames follow top00001, top00002, ...
     df["rank"] = df["rank"].apply(safe_int)
     df = df.sort_values(by="rank").reset_index(drop=True)
 
-    print(f"准备打开 TIFF: {TIF_PATH}")
+    print(f"Preparing to open TIFF: {TIF_PATH}")
     img = Image.open(TIF_PATH)
 
     width, height = img.size
-    print(f"TIFF 尺寸: width={width}, height={height}")
-    print(f"准备切图数量: {len(df)}")
-    print(f"patch size: {PATCH_SIZE} x {PATCH_SIZE}")
-    print(f"输出目录: {OUTPUT_DIR}")
+    print(f"TIFF size: width={width}, height={height}")
+    print(f"Number of patches to cut: {len(df)}")
+    print(f"Patch size: {PATCH_SIZE} x {PATCH_SIZE}")
+    print(f"Output directory: {OUTPUT_DIR}")
 
     success = 0
     skipped = 0
@@ -87,7 +87,7 @@ def main():
         rank = safe_int(row["rank"])
         attention_raw = float(row["attention_raw"])
 
-        # 左上角 + 256
+        # Top-left corner + 256
         left = x
         upper = y
         right = x + PATCH_SIZE
@@ -97,15 +97,15 @@ def main():
         save_path = os.path.join(OUTPUT_DIR, filename)
 
         print(
-            f"[{idx + 1}/{len(df)}] 正在处理: {filename} | "
+            f"[{idx + 1}/{len(df)}] Processing: {filename} | "
             f"box=({left}, {upper}, {right}, {lower})",
             flush=True
         )
 
-        # 越界检查
+        # Boundary check
         if left < 0 or upper < 0 or right > width or lower > height:
             print(
-                f"[跳过] rank={rank}, x={x}, y={y} 超出边界 "
+                f"[Skipped] rank={rank}, x={x}, y={y} is out of bounds "
                 f"(box=({left}, {upper}, {right}, {lower}), image=({width}, {height}))",
                 flush=True
             )
@@ -121,11 +121,11 @@ def main():
 
         success += 1
 
-        print(f"[完成] 已保存到: {save_path}", flush=True)
+        print(f"[Done] Saved to: {save_path}", flush=True)
 
-    print("\n处理完成")
-    print(f"成功导出: {success}")
-    print(f"跳过数量: {skipped}")
+    print("\nProcessing finished")
+    print(f"Successfully exported: {success}")
+    print(f"Skipped: {skipped}")
 
 
 if __name__ == "__main__":
