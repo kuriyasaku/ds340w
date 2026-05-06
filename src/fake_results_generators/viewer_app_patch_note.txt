@@ -1,0 +1,9 @@
+Optional small UI fix:
+
+In src/ui/viewer_app.py, replace the perturbed patch image source with row["perturbed_tile_path"] if that column exists.
+
+Example logic:
+
+perturbed_source = row["perturbed_tile_path"] if "perturbed_tile_path" in row and row["perturbed_tile_path"] else row["perturbed_overlay"]
+
+This lets the viewer show the true perturbed patch in the top-right panel, while the overlay remains available for explanation visualization.
