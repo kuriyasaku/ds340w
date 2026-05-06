@@ -168,7 +168,6 @@ The final interface is a lightweight audit viewer.
 
 It shows the original patch and perturbed patch side by side. It also shows tumor probability, confidence drop, prediction flip, and explanation maps.
 
-<img src="assets/ui1.png" width="850">
 
 <img src="assets/ui2.png" width="850">
 
